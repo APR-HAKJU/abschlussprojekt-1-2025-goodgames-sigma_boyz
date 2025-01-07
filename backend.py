@@ -1,7 +1,7 @@
 # backend.py
 
 from datetime import datetime
-
+import csv
 
 class Game:
     """Represents a single game in the collection"""
@@ -54,7 +54,9 @@ class GameLibrary:
         #TODO: Impement this method.
         # It should take a game object and save it as a row to a csv
         # the path of the csv is found in self.csv_path
-
+        with open("./games.csv", "a", newline='\n') as file:
+            writer = csv.writer(file)
+            writer.writerow(self.game_list)
         #TODO: Add a try except block to handle the case where the file does not exist
         pass
 
@@ -62,6 +64,11 @@ class GameLibrary:
         # TODO Implement this method.
         # It should load all objects from a csv file and return put the games into self.games
         # the path of the csv is found in self.csv_path
+        with open("games.csv", "r", newline='\n') as file:
+            reader = csv.reader(file)
+            game_list = list(reader)
+            for i in game_list:
+                return(i)
 
         # TODO: Add a try except block to handle the case where the file does not exist
         pass
@@ -83,9 +90,12 @@ class GameLibrary:
             platform=platform,
             status=status,
         )
+        game_list = [game.id, game.title,game.platform, game.status, game.rating, game.review, game.date_added, game.completion_date]
+        self.game_list = game_list
         self.save_to_csv(game)
         self.games.append(game)
         self.next_id += 1
+
         return game.to_dict()
 
     def update_game(self, game_id, status, rating=None, review=None):
