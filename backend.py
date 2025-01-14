@@ -47,6 +47,7 @@ class GameLibrary:
     def __init__(self):
         """Initialize empty game library"""
         self.games = []
+        self.load_from_csv()
         self.next_id = 1
         self.csv_path = "./games.csv"
 
@@ -66,9 +67,20 @@ class GameLibrary:
         # the path of the csv is found in self.csv_path
         with open("games.csv", "r", newline='\n') as file:
             reader = csv.reader(file)
-            game_list = list(reader)
-            for i in game_list:
-                return(i)
+            next(reader)
+            self.games = []
+            for row in reader:
+                game = Game(
+                    id=int(row[0]),
+                    title=row[1],
+                    platform=row[2],
+                    status=row[3],
+                )
+                game.rating = float(row[4]) if row[4] else None
+                game.review = row[5] if row[5] else None
+                game.date_added = datetime.strptime(row[6], "%Y-%m-%d").date() if row[6] else None
+                game.completion_date = datetime.strptime(row[7], "%Y-%m-%d").date() if row[7] else None
+                self.games.append(game)
 
         # TODO: Add a try except block to handle the case where the file does not exist
         pass
