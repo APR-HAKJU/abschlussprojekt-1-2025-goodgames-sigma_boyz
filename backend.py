@@ -50,14 +50,14 @@ class GameLibrary:
         self.load_from_csv()
         self.next_id = 1
         self.csv_path = "./games.csv"
-
     def save_to_csv(self,game):
         #TODO: Impement this method.
         # It should take a game object and save it as a row to a csv
         # the path of the csv is found in self.csv_path
         with open("./games.csv", "a", newline='\n') as file:
             writer = csv.writer(file)
-            writer.writerow(self.game_list)
+            writer.writerow([game.id, game.title, game.platform, game.status, game.rating, game.review, game.date_added,
+                         game.completion_date])
         #TODO: Add a try except block to handle the case where the file does not exist
         pass
 
@@ -85,10 +85,15 @@ class GameLibrary:
         # TODO: Add a try except block to handle the case where the file does not exist
         pass
 
-    def update_game_in_csv(self,game):
+    def update_game_in_csv(self,game_id, status, rating=None, review=None):
         # TODO Implement this method.
         # It should take a game object and update the corresponding row in the csv
         # the path of the csv is found in self.csv_path
+        for game in self.games:
+            if game.id == game_id:
+                game.update(status, rating, review)
+                self.update_game_in_csv(game)
+                return game.to_dict()
 
         # TODO: Add a try except block to handle the case where the file does not exist
         pass
@@ -96,20 +101,26 @@ class GameLibrary:
     def add_game(self, title, platform, status="Want to Play"):
         """Add a new game to the library"""
         # TODO Add try/except block to handle duplicate games and raise a ValueError if it happens
-        game = Game(
-            id=self.next_id,
-            title=title,
-            platform=platform,
-            status=status,
-        )
-        game_list = [game.id, game.title,game.platform, game.status, game.rating, game.review, game.date_added, game.completion_date]
-        self.game_list = game_list
-        self.save_to_csv(game)
-        self.games.append(game)
-        self.next_id += 1
-
-        return game.to_dict()
-
+        try:
+            game = Game(
+                id=self.next_id,
+                title=title,
+                platform=platform,
+                status=status,
+            )
+            title2 = []
+            for game2 in self.games:
+                title2.append(game2.title)
+            if game.title not in title2:
+                self.save_to_csv(game)
+                self.games.append(game)
+                self.next_id += 1
+                return game.to_dict()
+            else:
+                raise ValueError
+        except ValueError as e:
+            print("Es ist ein Fehler aufgetreten")
+            raise e
     def update_game(self, game_id, status, rating=None, review=None):
         """Update an existing game's information"""
         for game in self.games:
