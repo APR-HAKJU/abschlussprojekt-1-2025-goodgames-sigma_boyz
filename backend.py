@@ -52,50 +52,52 @@ class GameLibrary:
         self.next_id = 1
         self.csv_path = "./games.csv"
 
-    def save_to_csv(self,game):
-        #TODO: Impement this method.
-        # It should take a game object and save it as a row to a csv
-        # the path of the csv is found in self.csv_path
-        with open("./games.csv", "a", newline='\n') as file:
-            writer = csv.writer(file)
-            writer.writerow([game.id, game.title, game.platform, game.status, game.rating, game.review, game.date_added,
-                            game.completion_date])
-        #TODO: Add a try except block to handle the case where the file does not exist
-        pass
+    def save_to_csv(self, game):
+        """Save a game to the CSV file."""
+        try:
+            with open("games.csv", "a", newline="\n") as file:
+                writer = csv.writer(file)
+                writer.writerow([
+                    game.id, game.title, game.platform, game.status, game.rating,
+                    game.review, game.date_added, game.completion_date
+                ])
+        except FileNotFoundError:
+            print(f"Fehler: Datei {self.csv_path} wurde nicht gefunden.")
+            raise
 
     def load_from_csv(self):
-        # TODO Implement this method.
-        # It should load all objects from a csv file and return put the games into self.games
-        # the path of the csv is found in self.csv_path
-        with open("games.csv", "r", newline='\n') as file:
-            reader = csv.reader(file)
-            next(reader)  # Skip the header
+        """Load games from the CSV file."""
+        try:
+            with open("games.csv", "r", newline="\n") as file:
+                reader = csv.reader(file)
+                next(reader)  # Skip header
+                self.games = []
+                highest_id = 0
+                for row in reader:
+                    if row and row[0].isdigit():
+                        game = Game(
+                            id=int(row[0]),
+                            title=row[1],
+                            platform=row[2],
+                            status=row[3],
+                        )
+                        game.rating = float(row[4]) if row[4] else None
+                        game.review = row[5] if row[5] else None
+                        game.date_added = datetime.strptime(row[6], "%Y-%m-%d").date() if row[6] else None
+                        game.completion_date = datetime.strptime(row[7], "%Y-%m-%d").date() if row[7] else None
+                        self.games.append(game)
+                        highest_id = max(highest_id, game.id)
+                self.next_id = highest_id + 1
+        except FileNotFoundError:
+            print(f"Fehler: Datei {self.csv_path} wurde nicht gefunden.")
             self.games = []
-            highest_id = 0
-            for row in reader:
-                if row and row[0].isdigit():  # Skip empty and invalid rows
-                    game = Game(
-                        id=int(row[0]),
-                        title=row[1],
-                        platform=row[2],
-                        status=row[3],
-                    )
-                    game.rating = float(row[4]) if row[4] else None
-                    game.review = row[5] if row[5] else None
-                    game.date_added = datetime.strptime(row[6], "%Y-%m-%d").date() if row[6] else None
-                    game.completion_date = datetime.strptime(row[7], "%Y-%m-%d").date() if row[7] else None
-                    self.games.append(game)
-                    highest_id = max(highest_id, game.id)  # Track the highest existing ID
-            self.next_id = highest_id + 1
             self.next_id = 1
-        # TODO: Add a try except block to handle the case where the file does not exist
-        pass
 
     def update_game_in_csv(self, game):
         """Update the corresponding row in the CSV file."""
         game_list = []
         try:
-            with open(self.csv_path, "r", newline="\n") as file:
+            with open("games.csv", "r", newline="\n") as file:
                 reader = csv.reader(file)
                 header = next(reader)
                 for row in reader:
@@ -114,7 +116,7 @@ class GameLibrary:
                             current_game = game
                     game_list.append(current_game.to_dict())
 
-            with open(self.csv_path, "w", newline="\n") as file:
+            with open("games.csv", "w", newline="\n") as file:
                 writer = csv.DictWriter(file,
                                         fieldnames=["id", "title", "platform", "status", "rating", "review", "date_added",
                                                     "completion_date"])
@@ -129,28 +131,24 @@ class GameLibrary:
         pass
 
     def add_game(self, title, platform, status="Want to Play"):
-        """Add a new game to the library"""
-        # TODO Add try/except block to handle duplicate games and raise a ValueError if it happens
+        """Add a new game to the library."""
         try:
-            game = Game(
+            for game in self.games:
+                if game.title == title:
+                    raise ValueError(f"Spiel mit dem Titel '{title}' existiert bereits.")
+            new_game = Game(
                 id=self.next_id,
                 title=title,
                 platform=platform,
                 status=status,
             )
-            title2 = []
-            for game2 in self.games:
-                title2.append(game2.title)
-            if game.title not in title2:
-                self.save_to_csv(game)
-                self.games.append(game)
-                self.next_id += 1
-                return game.to_dict()
-            else:
-                raise ValueError
+            self.save_to_csv(new_game)
+            self.games.append(new_game)
+            self.next_id += 1
+            return new_game.to_dict()
         except ValueError as e:
-            print("Es ist ein Fehler aufgetreten")
-            raise e
+            print(f"Fehler: {e}")
+            raise
     def update_game(self, game_id, status, rating=None, review=None):
         """Update an existing game's information"""
         for game in self.games:
@@ -169,9 +167,12 @@ class GameLibrary:
         return [game.to_dict() for game in filtered_games]
 
     def get_game_by_id(self, game_id):
-        """Get a specific game by its ID"""
-        #TODO: Add try/except block to handle the case where the game is not found
-        for game in self.games:
-            if game.id == game_id:  # Use object attribute
-                return game.to_dict()
-        return None
+        """Get a specific game by its ID."""
+        try:
+            for game in self.games:
+                if game.id == game_id:
+                    return game.to_dict()
+            raise ValueError(f"Spiel mit der ID '{game_id}' wurde nicht gefunden.")
+        except ValueError as e:
+            print(f"Fehler: {e}")
+            raise
