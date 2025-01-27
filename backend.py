@@ -27,6 +27,7 @@ class Game:
         if review is not None:
             self.review = review
 
+
     def to_dict(self):
         """Convert game object to dictionary for frontend use"""
         return {
