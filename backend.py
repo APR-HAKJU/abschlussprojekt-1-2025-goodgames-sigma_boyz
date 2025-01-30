@@ -157,7 +157,12 @@ class GameLibrary:
                 self.update_game_in_csv(game)
                 return game.to_dict()
         return None
-
+    def get_game_by_name(self, name=None):
+        if name and name == name:
+            filtered_games = [game for game in self.games if game.title == name]
+        else:
+            filtered_games = self.games
+        return [game.to_dict() for game in filtered_games]
     def get_games(self, status=None):
         """Get games, optionally filtered by status"""
         if status and status != "All":

@@ -99,6 +99,7 @@ class GoodGamesApp:
 
         # Setup components
         self.setup_library_filter(left_frame)
+        self.setup_library_filter_name(right_frame)
         self.setup_library_treeview(left_frame)
         self.setup_game_details(left_frame)
         self.setup_game_overview(right_frame)
@@ -119,6 +120,21 @@ class GoodGamesApp:
         filter_combo.grid(row=0, column=1, pady=5)
         filter_combo.bind("<<ComboboxSelected>>", lambda e: self.refresh_library())
 
+    def setup_library_filter_name(self, parent):
+        """Setup the filter by name in the library tab"""
+        ttk.Label(parent, text="Filter by Name").grid(row=0, column=2, pady=5)
+
+        # Create an Entry widget for text filtering
+        self.filter_var = tk.StringVar()  # Use a StringVar to track the entry value
+        name_filter_entry = ttk.Entry(
+            parent,
+            textvariable=self.filter_var,
+            width=37
+        )
+        name_filter_entry.grid(row=0, column=1, pady=5)
+
+        # Bind the event to refresh library when text is changed
+        name_filter_entry.bind("<KeyRelease>", lambda e: self.refresh_library())
     def setup_library_treeview(self, parent):
         """Setup the treeview that displays the game library"""
         # Create Treeview
@@ -281,7 +297,7 @@ class GoodGamesApp:
 
         # Get filtered games
         games = self.library.get_games(self.filter_var.get())
-
+        games2 = self.library.get_game_by_name(self.filter_var.get())
         # Add games to treeview
         for game in games:
             self.tree.insert(
@@ -295,7 +311,18 @@ class GoodGamesApp:
                     game['rating'] if game['rating'] else ""
                 )
             )
-
+        for game in games2:
+            self.tree.insert(
+                "",
+                tk.END,
+                values=(
+                    game['id'],
+                    game['title'],
+                    game['platform'],
+                    game['status'],
+                    game['rating'] if game['rating'] else ""
+                )
+            )
     def on_select(self, event=None):
         """Handle game selection in library"""
         selection = self.tree.selection()
