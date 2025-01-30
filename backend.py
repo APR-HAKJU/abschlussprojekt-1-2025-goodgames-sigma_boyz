@@ -87,11 +87,11 @@ class GameLibrary:
                         game.completion_date = datetime.strptime(row[7], "%Y-%m-%d").date() if row[7] else None
                         self.games.append(game)
                         highest_id = max(highest_id, game.id)
-                self.next_id = highest_id + 1
+                self.next_id = highest_id + 1  # Update next_id after loading all games
         except FileNotFoundError:
             print(f"Fehler: Datei {self.csv_path} wurde nicht gefunden.")
             self.games = []
-            self.next_id = 1
+            self.next_id = 1  # Set to 1 if the file doesn't exist
 
     def update_game_in_csv(self, game):
         """Update the corresponding row in the CSV file."""
@@ -133,6 +133,26 @@ class GameLibrary:
     def add_game(self, title, platform, status="Want to Play"):
         """Add a new game to the library."""
         try:
+            with open("games.csv", "r", newline="\n") as file:
+                reader = csv.reader(file)
+                next(reader)  # Skip header
+                self.games = []
+                highest_id = 0
+                for row in reader:
+                    if row and row[0].isdigit():
+                        game = Game(
+                            id=int(row[0]),
+                            title=row[1],
+                            platform=row[2],
+                            status=row[3],
+                        )
+                        game.rating = float(row[4]) if row[4] else None
+                        game.review = row[5] if row[5] else None
+                        game.date_added = datetime.strptime(row[6], "%Y-%m-%d").date() if row[6] else None
+                        game.completion_date = datetime.strptime(row[7], "%Y-%m-%d").date() if row[7] else None
+                        self.games.append(game)
+                        highest_id = max(highest_id, game.id)
+                self.next_id = highest_id + 1  # Update next_id after loading all games
             for game in self.games:
                 if game.title == title:
                     raise ValueError(f"Spiel mit dem Titel '{title}' existiert bereits.")
@@ -144,7 +164,7 @@ class GameLibrary:
             )
             self.save_to_csv(new_game)
             self.games.append(new_game)
-            self.next_id += 1
+            #self.next_id += 1
             return new_game.to_dict()
         except ValueError as e:
             print(f"Fehler: {e}")
