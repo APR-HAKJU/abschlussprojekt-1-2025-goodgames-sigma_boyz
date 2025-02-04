@@ -4,6 +4,7 @@ from backend import GameLibrary
 import csv
 
 
+
 class GoodGamesApp:
     """Main application class for GoodGames"""
 
@@ -77,6 +78,12 @@ class GoodGamesApp:
         )
         status_combo.grid(row=2, column=1, pady=5)
 
+        # Genre
+        ttk.Label(self.add_game_frame, text="Genre:").grid(row=3, column=0, pady=5)
+        self.genre_var = tk.StringVar(value="Action")
+        genre_combo = ttk.Combobox(self.add_game_frame, textvariable=self.genre_var, width=37, values=("Action", "Adventure", "RPG", "Simulation", "Strategy", "Sports", "Puzzle"))
+        genre_combo.grid(row=3, column=1, pady=5)
+
         # Add Button
         ttk.Button(
             self.add_game_frame,
@@ -110,10 +117,10 @@ class GoodGamesApp:
         """Setup the status filter in the library tab"""
         ttk.Label(parent, text="Filter by Status:").grid(row=0, column=0, pady=5)
 
-        self.filter_var = tk.StringVar(value="All")
+        self.filter_status_var = tk.StringVar(value="All")
         filter_combo = ttk.Combobox(
             parent,
-            textvariable=self.filter_var,
+            textvariable=self.filter_status_var,
             width=37,
             values=("All", "Want to Play", "Playing", "Completed", "Abandoned")
         )
@@ -122,25 +129,26 @@ class GoodGamesApp:
 
     def setup_library_filter_name(self, parent):
         """Setup the filter by name in the library tab"""
-        ttk.Label(parent, text="Filter by Name").grid(row=0, column=2, pady=5)
+        ttk.Label(parent, text="Filter by Name:").grid(row=0, column=2, pady=5)
 
-        # Create an Entry widget for text filtering
-        self.filter_var = tk.StringVar()  # Use a StringVar to track the entry value
+        # Neue Variable für den Namenfilter
+        self.filter_name_var = tk.StringVar()
         name_filter_entry = ttk.Entry(
             parent,
-            textvariable=self.filter_var,
+            textvariable=self.filter_name_var,
             width=37
         )
-        name_filter_entry.grid(row=0, column=1, pady=5)
+        name_filter_entry.grid(row=0, column=3, pady=5)
 
-        # Bind the event to refresh library when text is changed
+        # Bindet die Aktualisierung der Liste an jede Tasteneingabe
         name_filter_entry.bind("<KeyRelease>", lambda e: self.refresh_library())
+
     def setup_library_treeview(self, parent):
         """Setup the treeview that displays the game library"""
         # Create Treeview
         self.tree = ttk.Treeview(
             parent,
-            columns=("ID", "Title", "Platform", "Status", "Rating"),
+            columns=("ID", "Title", "Platform", "Status", "Rating", "Genre"),
             show="headings"
         )
         self.tree.grid(row=1, column=0, columnspan=2, pady=10)
@@ -151,7 +159,8 @@ class GoodGamesApp:
             "Title": 200,
             "Platform": 100,
             "Status": 100,
-            "Rating": 50
+            "Rating": 50,
+            "Genre": 50
         }
 
         for col, width in columns.items():
@@ -219,6 +228,7 @@ class GoodGamesApp:
             ("Platform:", "overview_platform"),
             ("Status:", "overview_status"),
             ("Rating:", "overview_rating"),
+            ("Genre:", "overview_genre"),
             ("Added On:", "overview_date_added"),
             ("Completed On:", "overview_completion_date")
         ]
@@ -244,17 +254,19 @@ class GoodGamesApp:
         title = self.title_var.get().strip()
         platform = self.platform_var.get().strip()
         status = self.status_var.get()
+        genre = self.genre_var.get()
 
         if not title or not platform:
             messagebox.showerror("Error", "Title and Platform are required!")
             return
 
-        self.library.add_game(title, platform, status)
+        self.library.add_game(title, platform, status, genre)
 
         # Clear inputs
         self.title_var.set("")
         self.platform_var.set("")
         self.status_var.set("Want to Play")
+        self.genre_var.set("Action")
 
         # Show success message
         messagebox.showinfo("Success", "Game added successfully!")
@@ -271,6 +283,7 @@ class GoodGamesApp:
 
         game_id = self.tree.item(selection[0])['values'][0]
         status = self.tree.item(selection[0])['values'][3]
+        genre = self.tree.item(selection[0])["values"][5]
         rating = self.rating_var.get()
         review = self.review_text.get("1.0", tk.END).strip()
 
@@ -282,7 +295,7 @@ class GoodGamesApp:
             return
 
         # Update game
-        self.library.update_game(game_id, status, rating, review)
+        self.library.update_game(game_id, status, genre, rating, review)
 
         # Refresh views
         self.refresh_library()
@@ -295,10 +308,19 @@ class GoodGamesApp:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        # Get filtered games
-        games = self.library.get_games(self.filter_var.get())
-        games2 = self.library.get_game_by_name(self.filter_var.get())
-        # Add games to treeview
+        # Hole alle Spiele und filtere nach Status
+        selected_status = self.filter_status_var.get()
+        if selected_status == "All":
+            games = self.library.get_games()
+        else:
+            games = self.library.get_games(selected_status)
+
+        # Filtere nach Namen (Teilstring-Suche, case-insensitive)
+        name_filter = self.filter_name_var.get().strip().lower()
+        if name_filter:
+            games = [game for game in games if name_filter in game['title'].lower()]
+
+        # Füge gefilterte Spiele zur Treeview hinzu
         for game in games:
             self.tree.insert(
                 "",
@@ -308,21 +330,11 @@ class GoodGamesApp:
                     game['title'],
                     game['platform'],
                     game['status'],
-                    game['rating'] if game['rating'] else ""
+                    game['rating'] if game['rating'] else "",
+                    game["genre"]
                 )
             )
-        for game in games2:
-            self.tree.insert(
-                "",
-                tk.END,
-                values=(
-                    game['id'],
-                    game['title'],
-                    game['platform'],
-                    game['status'],
-                    game['rating'] if game['rating'] else ""
-                )
-            )
+
     def on_select(self, event=None):
         """Handle game selection in library"""
         selection = self.tree.selection()
@@ -342,6 +354,9 @@ class GoodGamesApp:
 
     def clear_details(self):
         """Clear all detail fields"""
+        for label in [self.overview_title, self.overview_platform, self.overview_status, self.overview_rating,
+                      self.overview_genre, self.overview_date_added, self.overview_completion_date]:
+            label.config(text="")
         self.rating_var.set("")
         self.review_text.delete("1.0", tk.END)
         self.overview_review.configure(state='normal')
@@ -358,10 +373,16 @@ class GoodGamesApp:
     def update_overview_panel(self, game):
         """Update the overview panel with the selected game's data"""
         # Basic info with fallbacks
-        self.overview_title.config(text=game.get('title', 'No title'))
-        self.overview_platform.config(text=game.get('platform', 'No platform'))
-        self.overview_status.config(text=game.get('status', 'Unknown'))
-        self.overview_rating.config(text=str(game.get('rating')) if game.get('rating') else "Not rated")
+        self.overview_title.config(text=game['title'])
+        self.overview_platform.config(text=game['platform'])
+        self.overview_status.config(text=game['status'])
+        self.overview_rating.config(text=game['rating'] if game['rating'] else "Not Rated")
+        self.overview_genre.config(text=game['genre'])
+        self.overview_date_added.config(text=game['date_added'])
+        self.overview_completion_date.config(text=game['completion_date'] if game['completion_date'] else "Not Completed")
+        self.overview_review.config(state="normal")
+        self.overview_review.insert(tk.END, game['review'] if game['review'] else "")
+        self.overview_review.config(state="disabled")
 
         # Date handling
         date_added = game.get('date_added')
