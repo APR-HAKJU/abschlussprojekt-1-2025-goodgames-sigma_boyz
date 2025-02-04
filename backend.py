@@ -3,6 +3,7 @@
 from datetime import datetime
 import csv
 
+
 class Game:
     """Represents a single game in the collection"""
 

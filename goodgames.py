@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from backend import GameLibrary
+from PIL import Image, ImageTk
 import csv
 
 
@@ -12,6 +13,7 @@ class GoodGamesApp:
         """Initialize the main application window and setup UI"""
         self.root = root
         self.root.title("GoodGames - Game Collection Tracker")
+        self.logo = None
 
         # Initialize game library
         self.library = GameLibrary()
@@ -25,14 +27,44 @@ class GoodGamesApp:
         # Setup individual tabs
         self.setup_add_game_tab()
         self.setup_library_tab()
+        self.setup_statistic_tab()
 
         # Bind tab change event
         self.notebook.bind("<<NotebookTabChanged>>", lambda e: self.refresh_library())
+        self.notebook.bind("<<NotebookTabChanged>>", lambda e: self.refresh_logo())
+
+        self.add_logo()
 
     def setup_main_container(self):
         """Setup the main container frame"""
         self.main_frame = ttk.Frame(self.root, padding="10")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+    def refresh_logo(self):
+        """Ensure the logo stays in place when switching tabs."""
+        current_tab = self.notebook.index(self.notebook.select())
+
+        if current_tab == 0:
+            self.logo_frame.lift()  # Hebt das Logo in den Vordergrund, anstatt es zu entfernen.
+            self.logo_frame.grid()  # Stellt sicher, dass es immer sichtbar ist.
+        else:
+            self.logo_frame.lower()  # Bringt es in den Hintergrund, falls du es verstecken möchtest.
+
+    def add_logo(self):
+        """Add the company logo to the main window"""
+        self.logo_frame = ttk.Frame(self.main_frame, padding="5")
+        self.logo_frame.grid(row=0, column=0, columnspan=2,
+                             sticky="w")  # Erhöhe die Spaltenanzahl, damit es nicht überschrieben wird.
+
+        try:
+            logo_image = Image.open("logo.webp")
+            logo_image = logo_image.resize((150, 150), Image.Resampling.LANCZOS)
+            self.logo_photo = ImageTk.PhotoImage(logo_image)
+            logo_label = ttk.Label(self.logo_frame, image=self.logo_photo)
+            logo_label.grid(row=0, column=0, padx=10, pady=10)
+            self.logo = logo_label
+        except FileNotFoundError:
+            print("Logo file 'logo.webp' not found. Please place it in the same directory as this script.")
 
     def create_notebook(self):
         """Create the notebook (tabbed interface)"""
@@ -42,10 +74,12 @@ class GoodGamesApp:
         # Create frames for each tab
         self.add_game_frame = ttk.Frame(self.notebook)
         self.library_frame = ttk.Frame(self.notebook)
+        self.statistic_frame = ttk.Frame(self.notebook)
 
         # Add frames to notebook
         self.notebook.add(self.add_game_frame, text="Add New Game")
         self.notebook.add(self.library_frame, text="Game Library")
+        self.notebook.add(self.statistic_frame, text="Statistic")
 
     def setup_add_game_tab(self):
         """Setup the Add Game tab interface"""
@@ -90,6 +124,58 @@ class GoodGamesApp:
             text="Add Game to Library",
             command=self.add_game
         ).grid(row=3, column=0, columnspan=2, pady=20)
+
+    def setup_statistic_tab(self):
+        """Setup the Statistic tab interface"""
+        # Clear previous content
+        for widget in self.statistic_frame.winfo_children():
+            widget.destroy()
+
+        ttk.Label(self.statistic_frame, text="Game Statistics", font=("Arial", 14, "bold")).pack(pady=10)
+
+        # Get statistics data
+        games = self.library.get_games()
+
+        # Spiele-Zählung & Durchschnittsbewertung
+        completed_games = [game for game in games if game['status'] == "Completed"]
+        completed_count = len(completed_games)
+        ratings = [float(game['rating']) for game in games if game['rating'] not in [None, ""]]
+        avg_rating = round(sum(ratings) / len(ratings), 2) if ratings else "No ratings"
+
+
+        ttk.Label(self.statistic_frame, text=f"Total Completed Games: {completed_count}").pack(pady=5)
+        ttk.Label(self.statistic_frame, text=f"Average Rating: {avg_rating}").pack(pady=5)
+
+        # Plattform-Statistik
+        platform_frame = ttk.LabelFrame(self.statistic_frame, text="Games per Platform")
+        platform_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # Genre-Statistik
+        genre_frame = ttk.LabelFrame(self.statistic_frame, text="Games per Genre")
+        genre_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # Zählungen initialisieren
+        platform_count = {}
+        genre_count = {}
+
+        for game in games:
+            platform = game['platform']
+            genre = game['genre']
+
+            platform_count[platform] = platform_count.get(platform, 0) + 1
+            genre_count[genre] = genre_count.get(genre, 0) + 1
+
+        # Plattform-Anzeige
+        for platform, count in platform_count.items():
+            ttk.Label(platform_frame, text=f"{platform}: {count} games").pack(anchor="w", padx=10, pady=2)
+
+        # Genre-Anzeige
+        for genre, count in genre_count.items():
+            ttk.Label(genre_frame, text=f"{genre}: {count} games").pack(anchor="w", padx=10, pady=2)
+
+        # Refresh statistics when tab is selected
+        self.notebook.bind("<<NotebookTabChanged>>", lambda e: self.setup_statistic_tab() if self.notebook.index(
+            self.notebook.select()) == 2 else None)
 
     def setup_library_tab(self):
         """Setup the Library tab interface"""

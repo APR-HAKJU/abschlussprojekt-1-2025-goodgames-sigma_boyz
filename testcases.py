@@ -21,9 +21,10 @@ class TestGameLibrary(unittest.TestCase):
         """Testet das Aktualisieren eines Spiels."""
         game = self.library.add_game("Dark Souls", "PS4")
         game_id = game['id']
-        self.library.update_game(game_id, status="Completed", rating=9, review="Ein großartiges Spiel!")
+        self.library.update_game(game_id, status="Completed", rating=9,genre="Action" ,review="Ein großartiges Spiel!")
         updated_game = self.library.get_game_by_id(game_id)
         self.assertEqual(updated_game['status'], "Completed")
+        self.assertEqual(updated_game['genre'], "Action")
         self.assertEqual(updated_game['rating'], 9)
         self.assertEqual(updated_game['review'], "Ein großartiges Spiel!")
 
